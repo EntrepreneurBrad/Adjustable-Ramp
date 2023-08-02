@@ -64,21 +64,15 @@ void setup() {
 }
 
 void LEDRampStationary() { // Makes the LEDs Green when the ramp is stationary
-  digitalWrite(redPin, HIGH);    // Turn off the red channel
-  digitalWrite(greenPin, LOW);   // Turn on the green channel
-  digitalWrite(bluePin, HIGH);   // Turn off the blue channel
+  digitalWrite(redPin, LOW);    // Turn off the red channel
+  digitalWrite(greenPin, HIGH);   // Turn on the green channel
+  digitalWrite(bluePin, LOW);   // Turn off the blue channel
 }
 
 void LEDRampMotion() { // Makes the LEDs Red when the ramp is stationary
-  if (digitalRead(redPin) == LOW) {
-    digitalWrite(redPin, LOW);
-    digitalWrite(greenPin, HIGH);
-    digitalWrite(bluePin, HIGH);
-  } else {
     digitalWrite(redPin, HIGH);
-    digitalWrite(greenPin, HIGH);
-    digitalWrite(bluePin, HIGH);
-  }
+    digitalWrite(greenPin, LOW);
+    digitalWrite(bluePin, LOW);
 }
 
 bool IRButtonPressed() {
@@ -88,70 +82,52 @@ bool IRButtonPressed() {
   // Check if the button is pressed (LOW) and the IR sensor detects an IR signal (LOW)
   if (buttonState == LOW && (irReceiver.decode(&irResults))) {
     irReceiver.resume();
+    delay(500);
     return true;
   }
   return false;
 }
 
-void RampMovement() {
-  // read ultrasonic sensor and continue to until true is read
-  while (!UltrasonicSensor()) {
-    // run ramp motion down
-    RampDownMotion();
-
-    // run and wait for IRButtonPressed until true is returned
-    while (!IRButtonPressed()) {
-      // Wait for the button to be pressed
-      delay(100);
-    }
-
-    // run ramp motion up
-    RampUpMotion();
-  }
-}
-
 void RampDownMotion() {
-  // loop
-  for (int angle = 180; angle >= 0; angle -= 10) {
-    LEDRampMotion();
-    servoMotor.write(angle);
-    delay(100);
-  }
+  LEDRampMotion();
+    servoMotor.write(0);
 }
 
 void RampUpMotion() {
-  // loop
-  for (int angle = 0; angle <= 180; angle += 10) {
-    LEDRampMotion();
-    servoMotor.write(angle);
-    delay(100);
+  LEDRampMotion();
+  servoMotor.write(180);
+}
+
+void RampMovement() {
+  while (true) {
+    Serial.println("loop");
+
+    // Read ultrasonic sensor and continue until true is read
+    if (IRButtonPressed()) {
+      Serial.println("IR button pressed. Ramping down motion.");
+      RampDownMotion();
+    }
+    else {
+      LEDRampStationary();
+      Serial.println("LED ramp stationary.");
+    }
+
+    if (IRButtonPressed()) {
+      Serial.println("IR button pressed. Ramping up.");
+      RampUpMotion();
+    }
+    else {
+      LEDRampStationary();
+      Serial.println("LED ramp stationary.");
+    }
   }
 }
 
-bool UltrasonicSensor() {
-  // Read the distance from the ultrasonic sensor
-  unsigned int distance = sonar.ping_cm();
-  // Set the desired distance threshold (in centimeters)
-  unsigned int thresholdDistance = 5;
-  // Return true if the distance is less than the threshold, otherwise return false
-  return (distance < thresholdDistance);
-}
+
 
 void loop() {
-  LEDRampStationary();
-
-  // run IRButtonPressed continuously until it is returned as True
-  while (!IRButtonPressed()) {
-    // Wait for the button to be pressed
-    delay(100);
-  }
-
-  // if true is returned continue:
-
-  // get servo angle to 180 to begin
+  LEDRampMotion();
   servoMotor.write(180);
-  delay(500); // Wait for the servo to move to the initial position
-
-  // run rampmovement and continue to run it
+  LEDRampStationary();
   RampMovement();
 }
